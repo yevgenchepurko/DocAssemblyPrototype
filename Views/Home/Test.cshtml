@@ -1,0 +1,133 @@
+﻿@{
+    //Layout = "_Layout";
+
+    
+}
+
+
+
+<script>
+    var baseUrl = document.baseURI.toLowerCase().replace("/test", "/");
+    var client = new XMLHttpRequest();
+    var operation;
+    var listOfTemplates;
+
+    client.onreadystatechange = function () {
+        if (client.readyState == 4 && client.status == 200) {
+            divStatus.innerText = operation + " - " + client.statusText;
+
+            if (operation == "UploadTemplate" || operation == "GetTemplateInfo") {
+                //taResponse.value = client.responseText;
+                var x = JSON.parse(client.responseText);
+                taResponse.value = JSON.stringify(x, null, "\t");
+                btnGenerate.disabled = null;
+            } else if (operation == "GenerateDocument")
+            {
+                //alert(client.responseText);
+                download(client.responseText);
+            }
+            else if (operation == "GetDocument") {
+                //alert(client.responseText);                
+            }
+            else if (operation == "GetTemplateList") {
+                listOfTemplates = JSON.parse(client.responseText);
+                updateTemplateList();               
+                
+            }
+        }
+    }
+
+    function updateTemplateList() {
+        var i;
+        for (i = slLists.options.length - 1 ; i >= 0 ; i--) {
+            slLists.remove(i);
+        }
+
+        for (i = 0; i < listOfTemplates.length; i++) {
+            var option = document.createElement("option");
+            option.text = listOfTemplates[i];
+            slLists.add(option);
+        }
+    }
+        
+
+    function upload()
+    {
+        operation = "UploadTemplate";
+        linkToFile.innerText = "";
+        divStatus.innerText = "uploading started...";
+        var file = document.getElementById("uploadfile");
+        var formData = new FormData();
+        formData.append("upload", file.files[0]);
+        client.open("post", baseUrl + operation, true);
+        //client.setRequestHeader("Content-Type", "multipart/form-data");
+        client.send(formData);
+    }
+    
+    function generate() {
+        operation = "GenerateDocument";
+        linkToFile.innerText = "";
+        divStatus.innerText = "document generation started...";
+        client.open("post", baseUrl + operation, true);
+        client.setRequestHeader("Content-Type", "application/json");
+        client.send(taResponse.value);
+    }
+
+    function download(filename)
+    {
+        linkToFile.innerText = "";
+        operation = "GetDocument";
+        filename = filename.replace('"', '').replace('"', '');
+        var url = baseUrl + operation + "/" + filename;
+        linkToFile.innerText = url;
+
+        
+        frmDownload.src = url;
+    }
+
+    function getList()
+    {        
+        operation = "GetTemplateList";
+        var url = baseUrl + operation;
+        client.open("get", url, true);
+        client.send();
+        
+    }
+
+    function onTemplateSelected()
+    {
+        for (var i = 0; i < slLists.options.length; i++) {
+
+            if (slLists.options[i].selected)
+            {
+                getInfo(slLists.options[i].text);
+                break;
+            }
+        }
+    }
+
+    function getInfo(template)
+    {
+        operation = "GetTemplateInfo";
+        var url = baseUrl + operation + "/" + template;
+        client.open("get", url, true);
+        client.send();
+    }
+
+</script>
+
+<h1>Select docx template</h1><br>
+<input type="file" id="uploadfile" name="uploadfile" value="Select template" onchange="upload()" /><br>
+<!--input type="button" value="Upload Template" onclick="upload()" /-->
+<br>Status:<span id="divStatus"></span><br><br>
+<h1>Upload Response and payload to generate document:</h1><br>
+<textarea id="taResponse" style="width:500px;height:500px"></textarea>
+<select id="slLists" multiple style="width:500px;height:500px" onchange="onTemplateSelected()"></select>
+<input type="button" value="Template List" onclick="getList()" />
+<br>
+<input type="button" value="Generate Document" onclick="generate()" id="btnGenerate" disabled="disabled" />
+<br><span id="linkToFile"></span>
+
+
+
+<br><iframe id="frmDownload" style="visibility:hidden"></iframe>
